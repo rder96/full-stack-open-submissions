@@ -1,0 +1,8 @@
+# all directories ignore node_modules 
+**/node_modules
+
+# all files names end wit ~ 
+**/*~
+
+# env 
+**/.env
