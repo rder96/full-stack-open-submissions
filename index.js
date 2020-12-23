@@ -17,7 +17,6 @@ app.get('/', (request, response) => {
     response.send('hello world')
 })
 
-// todo
 app.get('/info', (request, response) => { 
     const currTime = new Date()
     Person.countDocuments({}, function (err, count) {
@@ -51,7 +50,7 @@ app.delete('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.post('/api/persons', (request, response) => { 
+app.post('/api/persons', (request, response, next) => { 
   const body = request.body 
 
   if (body.name === undefined) { 
@@ -63,9 +62,16 @@ app.post('/api/persons', (request, response) => {
     number: body.number 
   })
 
-  person.save().then(savedPerson => { 
-    response.json(savedPerson)
-  })
+  person
+    .save()
+    .then(savedPerson => savedPerson.toJSON())
+    .then(savedAndFormattedPerson => {
+        response.json(savedAndFormattedPerson)
+    })
+    .catch(error => {
+        console.log(error)
+        next(error)
+    })
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
@@ -75,10 +81,9 @@ app.put('/api/persons/:id', (request, response, next) => {
         name: body.name, 
         number: body.number, 
     }
-
-    Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: 'query' })
       .then(updatedPerson => {
-          response.json(updatedPerson)
+          response.json(updatedPerson.toJSON())
       })
       .catch(error => next(error))
 })
@@ -94,7 +99,9 @@ const errorHandler = (error, request, response, next) => {
   
   if (error.name === 'CastError' && error.kind == 'ObjectId') {
     return response.status(400).send({ error: 'malformatted id' })
-  } 
+  } else if (error.name === 'ValidationError') {
+      return response.status(400).send({ error: error.message })
+  }
   
   next(error)
 }
